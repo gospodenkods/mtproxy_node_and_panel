@@ -29,7 +29,7 @@ app.get('/api/system/version', authMiddleware, (_req, res) => {
   let version = 'unknown';
   try {
     const pkg = JSON.parse(readFileSync(join(__dirname, '../package.json'), 'utf-8'));
-    version = pkg.version || 'unknown';
+    version = pkg.version ? `${pkg.version}_f_gds` : 'unknown';
   } catch {}
   res.json({ version });
 });
