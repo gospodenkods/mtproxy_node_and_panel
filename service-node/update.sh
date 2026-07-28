@@ -77,6 +77,10 @@ git stash pop 2>/dev/null || true
 NGINX_PORT=$(grep '^NGINX_PORT=' .env | cut -d'=' -f2)
 NGINX_PORT=${NGINX_PORT:-443}
 bash scripts/apply-meko-fixes.sh "$NGINX_PORT"
+install -m 0755 scripts/apply-meko-firewall.sh /usr/local/sbin/mtproxy-meko-firewall
+if [ -r /etc/mtproxy-meko-firewall.conf ]; then
+    /usr/local/sbin/mtproxy-meko-firewall --restore
+fi
 
 echo -e "${CYAN}[4/5] Загрузка и запуск обновлённой сервис-ноды...${NC}"
 export COMPOSE_PROJECT_NAME=mtproto-node

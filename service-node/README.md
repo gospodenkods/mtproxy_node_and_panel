@@ -230,8 +230,10 @@ BBR/fq, TCP Fast Open, увеличенные очереди и буферы, TC
 `max_connections`, `client_handshake`, `client_keepalive`, `tg_connect` и MSS
 приходят из web-панели и записываются в генерируемый `config.toml`.
 
-SYN limiter из MEKO намеренно не добавлен, чтобы не накладывать несколько
-независимых лимитеров на один порт.
+SYN limiter доступен как отдельный выбираемый пресет. Одновременно активируется
+только один backend, поэтому независимые лимитеры не накладываются на один порт:
+`nft-v3`, `nft-v2`, `iptables-v3` или `iptables-v2`. Для отключения выполните
+`sudo mtproxy-meko-firewall off`.
 - Порт 443 свободен (для nginx)
 - 512 MB RAM, 1 GB диск
 

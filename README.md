@@ -186,3 +186,26 @@ docker compose up -d --build
 `tg_connect=30`, `client_keepalive=120` и отключает принудительный MSS.
 Host-часть фиксов (BBR, TCP Fast Open, буферы и keepalive ядра) устанавливается
 скриптом сервис-ноды.
+
+### Firewall-пресеты MEKO
+
+При установке сервис-ноды можно выбрать один из пресетов оригинального
+`MTPROTO_FIX_By_MEKO`:
+
+- `nft-v3` — TCP fingerprint, рекомендуемый вариант для Docker;
+- `nft-v2` — распознавание iOS по TTL и размеру пакета;
+- `iptables-v3` — TCP fingerprint через `u32` и `mangle`;
+- `iptables-v2` — распознавание iOS по TTL и размеру пакета;
+- `off` — удалить правила MEKO.
+
+Повторное применение и смена backend выполняются безопасно: правила предыдущего
+пресета удаляются, после чего создаётся только одна цепочка или nft-таблица.
+
+```bash
+sudo mtproxy-meko-firewall nft-v3 443
+sudo mtproxy-meko-firewall iptables-v3 443,8443
+sudo mtproxy-meko-firewall off
+```
+
+Выбранный профиль сохраняется в `/etc/mtproxy-meko-firewall.conf` и
+восстанавливается systemd после перезагрузки.
