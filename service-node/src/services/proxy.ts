@@ -115,6 +115,73 @@ export async function getProxy(id: string): Promise<ProxyConfig | undefined> {
   return proxy;
 }
 
+export async function getTelemtConfig(id: string): Promise<string | undefined> {
+  const proxy = store.getProxyById(id);
+  if (!proxy) return undefined;
+  try {
+    return await dockerService.getProxyConfig(proxy.containerName);
+  } catch (error) {
+    if (proxy.rawTelemtConfig) return proxy.rawTelemtConfig;
+    throw error;
+  }
+}
+
+function validateRawTelemtConfig(content: unknown, proxy: ProxyConfig): string {
+  if (typeof content !== 'string') throw new Error('config must be a string');
+  const normalized = content.replace(/\r\n/g, '\n').trim() + '\n';
+  if (normalized.length === 0 || normalized.length > 65536 || normalized.includes('\0')) {
+    throw new Error('config must contain between 1 and 65536 characters');
+  }
+  for (const section of ['general', 'server', 'access.users']) {
+    if (!new RegExp(`^\\[${section.replace('.', '\\.')}\\]\\s*$`, 'm').test(normalized)) {
+      throw new Error(`Required section [${section}] is missing`);
+    }
+  }
+  const expectedPort = proxy.listenPort || config.nginxPort;
+  if (!new RegExp(`^port\\s*=\\s*${expectedPort}\\s*$`, 'm').test(normalized)) {
+    throw new Error(`The Telemt port must remain ${expectedPort} to match nginx`);
+  }
+  if (!normalized.includes(`"${proxy.secret}"`)) {
+    throw new Error('The current proxy secret must remain in [access.users]');
+  }
+  return normalized;
+}
+
+export async function updateTelemtConfig(id: string, content: unknown): Promise<string | undefined> {
+  const proxy = store.getProxyById(id);
+  if (!proxy) return undefined;
+  const normalized = validateRawTelemtConfig(content, proxy);
+  const previousRaw = proxy.rawTelemtConfig;
+  const effectiveNatIp = proxy.directOutbound ? undefined : (proxy.natIp || config.natIp || undefined);
+
+  const recreate = async (rawTelemtConfig?: string) => {
+    await dockerService.removeProxyContainer(proxy.containerName);
+    await dockerService.createProxyContainer(
+      proxy.containerName,
+      proxy.secret,
+      proxy.domain,
+      proxy.listenPort || config.nginxPort,
+      proxy.tag,
+      proxy.directOutbound ? undefined : proxy.vpnContainerName,
+      proxy.maskHost,
+      effectiveNatIp,
+      { ...proxy, rawTelemtConfig },
+    );
+  };
+
+  try {
+    await recreate(normalized);
+    await new Promise((resolve) => setTimeout(resolve, 750));
+    const status = await dockerService.getContainerStatus(proxy.containerName);
+    if (status !== 'running') throw new Error('Telemt rejected the configuration and stopped');
+    store.updateProxy(id, { rawTelemtConfig: normalized, status: 'running' });
+    return normalized;
+  } catch (error) {
+    await recreate(previousRaw).catch(() => {});
+    throw error;
+  }
+}
+
 export async function updateProxy(id: string, req: ProxyUpdateRequest): Promise<ProxyConfig | undefined> {
   const proxy = store.getProxyById(id);
   if (!proxy) return undefined;
@@ -226,6 +293,8 @@ export async function updateProxy(id: string, req: ProxyUpdateRequest): Promise<
   }
 
   if (needsRestart) {
+    // Structured edits regenerate config.toml and intentionally leave raw-editor mode.
+    if (proxy.rawTelemtConfig) updates.rawTelemtConfig = undefined;
     await dockerService.removeProxyContainer(proxy.containerName);
     const useDirect = req.directOutbound !== undefined ? req.directOutbound : !!proxy.directOutbound;
     const effectiveNatIp = useDirect
@@ -240,7 +309,7 @@ export async function updateProxy(id: string, req: ProxyUpdateRequest): Promise<
       useDirect ? undefined : newSocks5Host,
       updates.maskHost !== undefined ? updates.maskHost : proxy.maskHost,
       effectiveNatIp,
-      Object.assign({}, proxy, req)
+      Object.assign({}, proxy, req, { rawTelemtConfig: undefined })
     );
   }
 
@@ -427,6 +496,7 @@ export interface ExportedProxy {
   natIp?: string;
   tunnelInterface?: string;
   directOutbound?: boolean;
+  rawTelemtConfig?: string;
   useMiddleProxy?: boolean;
   fastMode?: boolean;
   me2dcFallback?: boolean;
@@ -488,6 +558,7 @@ export function exportProxies(): ExportBundle {
       natIp: p.natIp,
       tunnelInterface: p.tunnelInterface,
       directOutbound: p.directOutbound,
+      rawTelemtConfig: p.rawTelemtConfig,
       useMiddleProxy: p.useMiddleProxy,
       fastMode: p.fastMode,
       me2dcFallback: p.me2dcFallback,
@@ -545,6 +616,7 @@ export async function importProxies(bundle: ExportBundle): Promise<{ imported: n
         natIp: p.natIp,
         tunnelInterface: p.tunnelInterface,
         directOutbound: p.directOutbound,
+        rawTelemtConfig: p.rawTelemtConfig,
         useMiddleProxy: p.useMiddleProxy,
         fastMode: p.fastMode,
         me2dcFallback: p.me2dcFallback,

@@ -27,6 +27,7 @@ export interface ProxyConfig {
   natIp?: string;            // tunnel exit node public IP (overrides node-level NAT_IP)
   tunnelInterface?: string;  // tunnel interface name, e.g. tun0 (for reference/future automation)
   directOutbound?: boolean;  // bypass node-level NAT/VPN defaults and connect directly
+  rawTelemtConfig?: string;  // optional user-managed config.toml override
   useMiddleProxy?: boolean;
   fastMode?: boolean;
   me2dcFallback?: boolean;
@@ -79,6 +80,7 @@ export interface ProxyCreateRequest {
   natIp?: string;
   tunnelInterface?: string;
   directOutbound?: boolean;
+  rawTelemtConfig?: string;
   useMiddleProxy?: boolean;
   fastMode?: boolean;
   me2dcFallback?: boolean;
@@ -129,6 +131,7 @@ export interface ProxyUpdateRequest {
   natIp?: string;
   tunnelInterface?: string;
   directOutbound?: boolean;
+  rawTelemtConfig?: string;
   useMiddleProxy?: boolean;
   fastMode?: boolean;
   me2dcFallback?: boolean;

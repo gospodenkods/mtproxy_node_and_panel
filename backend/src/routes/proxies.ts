@@ -95,6 +95,34 @@ router.put('/:nodeId/proxies/:proxyId', async (req: AuthRequest, res: Response) 
   }
 });
 
+router.get('/:nodeId/proxies/:proxyId/config', async (req: AuthRequest, res: Response) => {
+  try {
+    const node = await getNodeWithToken(req.params.nodeId);
+    if (!node) {
+      res.status(404).json({ error: 'Node not found' });
+      return;
+    }
+    const result = await proxyToNode(node, 'GET', `/${req.params.proxyId}/config`);
+    res.status(result.status).json(result.data);
+  } catch (error: any) {
+    res.status(502).json({ error: `Failed to connect to node: ${error.message}` });
+  }
+});
+
+router.put('/:nodeId/proxies/:proxyId/config', async (req: AuthRequest, res: Response) => {
+  try {
+    const node = await getNodeWithToken(req.params.nodeId);
+    if (!node) {
+      res.status(404).json({ error: 'Node not found' });
+      return;
+    }
+    const result = await proxyToNode(node, 'PUT', `/${req.params.proxyId}/config`, req.body);
+    res.status(result.status).json(result.data);
+  } catch (error: any) {
+    res.status(502).json({ error: `Failed to connect to node: ${error.message}` });
+  }
+});
+
 // Delete proxy
 router.delete('/:nodeId/proxies/:proxyId', async (req: AuthRequest, res: Response) => {
   try {

@@ -403,6 +403,17 @@ export async function updateProxy(nodeId: number, proxyId: string, data: UpdateP
   });
 }
 
+export async function getTelemtConfig(nodeId: number, proxyId: string): Promise<{ config: string }> {
+  return request<{ config: string }>(`/nodes/${nodeId}/proxies/${proxyId}/config`);
+}
+
+export async function updateTelemtConfig(nodeId: number, proxyId: string, config: string): Promise<{ config: string }> {
+  return request<{ config: string }>(`/nodes/${nodeId}/proxies/${proxyId}/config`, {
+    method: 'PUT',
+    body: JSON.stringify({ config }),
+  });
+}
+
 export async function deleteProxy(nodeId: number, proxyId: string) {
   return request<{ success: boolean }>(`/nodes/${nodeId}/proxies/${proxyId}`, { method: 'DELETE' });
 }

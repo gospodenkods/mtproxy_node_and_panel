@@ -51,6 +51,32 @@ router.put('/:id', async (req: Request, res: Response) => {
   }
 });
 
+router.get('/:id/config', async (req: Request, res: Response) => {
+  try {
+    const config = await proxyService.getTelemtConfig(req.params.id);
+    if (config === undefined) {
+      res.status(404).json({ error: 'Proxy not found' });
+      return;
+    }
+    res.json({ config });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.put('/:id/config', async (req: Request, res: Response) => {
+  try {
+    const config = await proxyService.updateTelemtConfig(req.params.id, req.body?.config);
+    if (config === undefined) {
+      res.status(404).json({ error: 'Proxy not found' });
+      return;
+    }
+    res.json({ config });
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
 // Delete proxy
 router.delete('/:id', async (req: Request, res: Response) => {
   try {

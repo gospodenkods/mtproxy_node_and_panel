@@ -153,6 +153,7 @@ async function resolveContainerIp(containerName: string): Promise<string> {
 }
 
 interface TelemtProxyOptions {
+  rawTelemtConfig?: string;
   maxConnections?: number;
   useMiddleProxy?: boolean;
   fastMode?: boolean;
@@ -205,6 +206,7 @@ function generateConfigToml(
 ): string {
   const cleanTag = tag ? tag.trim().replace(/[^0-9a-fA-F]/g, '') : '';
   const opts: Required<TelemtProxyOptions> = {
+    rawTelemtConfig: '',
     maxConnections: 0,
     useMiddleProxy: true,
     fastMode: true,
@@ -417,12 +419,43 @@ export async function createProxyContainer(
   });
 
   // Inject config.toml into the container before starting
-  const configContent = generateConfigToml(secret, domain, listenPort, tag, resolvedSocks5Host, resolvedSocks5Port, resolvedMaskHost, natIp, options);
+  const configContent = options.rawTelemtConfig || generateConfigToml(
+    secret,
+    domain,
+    listenPort,
+    tag,
+    resolvedSocks5Host,
+    resolvedSocks5Port,
+    resolvedMaskHost,
+    natIp,
+    options,
+  );
   const tarBuffer = createTarBuffer('config.toml', configContent);
   await container.putArchive(tarBuffer, { path: '/etc/telemt' });
 
   await container.start();
   return container.id;
+}
+
+export async function getProxyConfig(containerName: string): Promise<string> {
+  const container = docker.getContainer(containerName);
+  const exec = await container.exec({
+    Cmd: ['cat', '/etc/telemt/config.toml'],
+    AttachStdout: true,
+    AttachStderr: true,
+    Tty: true,
+  });
+  const stream = await exec.start({ hijack: true, stdin: false });
+  const chunks: Buffer[] = [];
+  await new Promise<void>((resolve, reject) => {
+    stream.on('data', (chunk: Buffer) => chunks.push(Buffer.from(chunk)));
+    stream.on('end', resolve);
+    stream.on('error', reject);
+  });
+  const inspect = await exec.inspect();
+  const output = Buffer.concat(chunks).toString('utf8');
+  if (inspect.ExitCode !== 0) throw new Error(output || 'Cannot read Telemt config');
+  return output;
 }
 
 export async function removeProxyContainer(containerName: string): Promise<void> {

@@ -4,6 +4,7 @@ import { Card, Button, Label, DropdownMenu } from '@gravity-ui/uikit';
 import { pauseProxy, unpauseProxy, ProxyData } from '../api';
 import { formatBytes } from '../utils/format';
 import s from './ProxyCard.module.scss';
+import TelemtConfigDialog from './TelemtConfigDialog';
 
 interface Props {
   proxy: ProxyData;
@@ -19,6 +20,7 @@ interface Props {
 export default function ProxyCard({ proxy, nodeId, nodeName, copied, onEdit, onDelete, onCopyLink, onStatusChange }: Props) {
   const navigate = useNavigate();
   const [togglingPause, setTogglingPause] = useState(false);
+  const [showConfig, setShowConfig] = useState(false);
 
   const statusTheme = proxy.status === 'running' ? 'success' : proxy.status === 'stopped' || proxy.status === 'paused' ? 'warning' : 'danger';
   const statusLabel = proxy.status === 'running' ? 'работает' : proxy.status === 'paused' ? 'пауза' : proxy.status === 'stopped' ? 'остановлен' : 'ошибка';
@@ -50,6 +52,7 @@ export default function ProxyCard({ proxy, nodeId, nodeName, copied, onEdit, onD
 
   const menuItems = [
     { text: 'Редактировать', action: () => onEdit() },
+    { text: 'Конфигурация Telemt', action: () => setShowConfig(true) },
     ...(proxy.status === 'running' || proxy.status === 'paused'
       ? [{
           text: proxy.status === 'paused' ? 'Запустить' : 'Пауза',
@@ -60,6 +63,7 @@ export default function ProxyCard({ proxy, nodeId, nodeName, copied, onEdit, onD
   ];
 
   return (
+    <>
     <Card type="action" view="outlined" className={s.card} onClick={handleCardClick}>
       <div className={s.header}>
         <span className={s.name}>{proxy.name || `Proxy ${proxy.id}`}</span>
@@ -109,6 +113,13 @@ export default function ProxyCard({ proxy, nodeId, nodeName, copied, onEdit, onD
           />
         </span>
         <Button
+          view="outlined"
+          size="s"
+          onClick={stopProp(() => setShowConfig(true))}
+        >
+          Config
+        </Button>
+        <Button
           view="action"
           size="s"
           onClick={stopProp(onCopyLink)}
@@ -117,5 +128,13 @@ export default function ProxyCard({ proxy, nodeId, nodeName, copied, onEdit, onD
         </Button>
       </div>
     </Card>
+    <TelemtConfigDialog
+      open={showConfig}
+      nodeId={nodeId}
+      proxy={proxy}
+      onClose={() => setShowConfig(false)}
+      onSaved={onStatusChange}
+    />
+    </>
   );
 }
