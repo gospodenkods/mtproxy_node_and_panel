@@ -34,12 +34,12 @@ async function runOnHost(command: string[]): Promise<string> {
   const image = await getOwnImage();
   const container = await docker.createContainer({
     Image: image,
-    Entrypoint: ['/bin/busybox', 'chroot'],
-    Cmd: ['/host', ...command],
+    Entrypoint: ['/usr/bin/nsenter'],
+    Cmd: ['-t', '1', '-m', '-u', '-n', '-i', '--', ...command],
     HostConfig: {
       AutoRemove: false,
-      Binds: ['/:/host'],
       NetworkMode: 'host',
+      PidMode: 'host',
       Privileged: true,
     },
     Tty: true,
