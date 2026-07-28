@@ -129,7 +129,10 @@ export async function updateProxy(id: string, req: ProxyUpdateRequest): Promise<
   }
   if (req.name !== undefined) updates.name = req.name;
   if (req.note !== undefined) updates.note = req.note;
-  if (req.maxConnections !== undefined) updates.maxConnections = req.maxConnections;
+  if (req.maxConnections !== undefined && req.maxConnections !== proxy.maxConnections) {
+    updates.maxConnections = req.maxConnections;
+    needsRestart = true;
+  }
   if (req.listenPort !== undefined && req.listenPort !== proxy.listenPort) {
     updates.listenPort = req.listenPort;
     needsRestart = true;

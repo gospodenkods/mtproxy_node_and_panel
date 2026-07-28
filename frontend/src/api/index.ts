@@ -166,6 +166,20 @@ export async function applyNodeFirewall(id: number, preset: FirewallPreset, port
   });
 }
 
+export interface ApplyMekoResult {
+  success: boolean;
+  firewall: FirewallStatus;
+  ports: number[];
+  updatedProxies: number;
+  errors: string[];
+}
+
+export async function applyAllMekoRecommendations(id: number): Promise<ApplyMekoResult> {
+  return request<ApplyMekoResult>(`/nodes/${id}/firewall/apply-all`, {
+    method: 'POST',
+  });
+}
+
 // Proxies
 export interface ConnectedIpInfo {
   ip: string;

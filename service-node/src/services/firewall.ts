@@ -30,7 +30,7 @@ async function getOwnImage(): Promise<string> {
   return info.Config.Image;
 }
 
-async function runOnHost(command: string[]): Promise<string> {
+export async function runOnHost(command: string[]): Promise<string> {
   const image = await getOwnImage();
   const container = await docker.createContainer({
     Image: image,

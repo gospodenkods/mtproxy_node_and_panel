@@ -110,6 +110,20 @@ apply_iptables() {
   iptables -A "$IPT_CHAIN" -j RETURN
 }
 
+open_managed_firewall_ports() {
+  local port
+  if command -v ufw >/dev/null 2>&1 && ufw status 2>/dev/null | grep -q "Status: active"; then
+    for port in "${PORTS[@]}"; do
+      ufw allow "${port}/tcp" >/dev/null
+    done
+  elif command -v firewall-cmd >/dev/null 2>&1 && systemctl is-active --quiet firewalld 2>/dev/null; then
+    for port in "${PORTS[@]}"; do
+      firewall-cmd --permanent --add-port="${port}/tcp" >/dev/null
+    done
+    firewall-cmd --reload >/dev/null
+  fi
+}
+
 install_service() {
   cat > "$CONFIG_FILE" <<EOF
 PRESET=$PRESET
@@ -178,6 +192,7 @@ case "$PRESET" in
   iptables-v2) apply_iptables v2 ;;
 esac
 
+open_managed_firewall_ports
 if [[ "$RESTORE_MODE" == false ]]; then
   install_service
 fi

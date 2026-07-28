@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useState } from 'react';
-import { Alert, Dialog, Select, TextInput } from '@gravity-ui/uikit';
+import { Alert, Button, Dialog, Select, TextInput } from '@gravity-ui/uikit';
 import {
+  applyAllMekoRecommendations,
   applyNodeFirewall,
   FirewallPreset,
   getNodeFirewall,
@@ -26,11 +27,13 @@ export default function FirewallPresetDialog({ node, onClose }: Props) {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [resultMessage, setResultMessage] = useState('');
 
   useEffect(() => {
     if (!node) return;
     setLoading(true);
     setError('');
+    setResultMessage('');
     getNodeFirewall(node.id)
       .then((status) => {
         setPreset(status.preset);
@@ -67,12 +70,47 @@ export default function FirewallPresetDialog({ node, onClose }: Props) {
     }
   };
 
+  const handleApplyAll = async () => {
+    if (!node || !confirm(
+      'Применить полный MEKO preset? Будут настроены sysctl, nftables V3 и параметры всех Telemt-прокси на этой ноде.',
+    )) return;
+    setSaving(true);
+    setError('');
+    setResultMessage('');
+    try {
+      const result = await applyAllMekoRecommendations(node.id);
+      setPreset(result.firewall.preset);
+      setPorts(result.ports.join(', '));
+      setResultMessage(
+        `MEKO применён: nftables V3 на портах ${result.ports.join(', ')}; обновлено прокси: ${result.updatedProxies}.`,
+      );
+      if (result.errors.length > 0) {
+        setError(result.errors.join('; '));
+      }
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <Dialog open={!!node} onClose={onClose} size="m">
       <Dialog.Header caption={`MEKO firewall — ${node?.name || ''}`} />
       <Dialog.Body>
         <form id="firewall-preset-form" onSubmit={handleApply}>
           {error && <div style={{ marginBottom: 16 }}><Alert theme="danger" message={error} /></div>}
+          {resultMessage && <div style={{ marginBottom: 16 }}><Alert theme="success" message={resultMessage} /></div>}
+          <div style={{ marginBottom: 16, padding: 12, borderRadius: 8, background: 'var(--g-color-base-generic)' }}>
+            <div style={{ fontWeight: 600, marginBottom: 6 }}>Рекомендуемый полный preset</div>
+            <div style={{ color: 'var(--g-color-text-secondary)', marginBottom: 10 }}>
+              Автоматически определит все порты, применит sysctl/BBR, nftables V3,
+              отключит MSS и установит рекомендуемые лимиты и таймауты Telemt.
+            </div>
+            <Button view="action" onClick={handleApplyAll} loading={saving || loading} width="max">
+              Применить все рекомендации MEKO
+            </Button>
+          </div>
           <Alert
             theme="warning"
             message="Правила применяются на хосте сервис-ноды. При смене пресета предыдущие MEKO-цепочки удаляются."

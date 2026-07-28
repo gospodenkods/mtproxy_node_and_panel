@@ -164,6 +164,7 @@ mkdir -p data
 # Apply the host-level part of the MEKO fixes. Container-level nofile limits and
 # telemt settings are applied by the service node when each proxy is created.
 bash scripts/apply-meko-fixes.sh "$NGINX_PORT"
+install -m 0755 scripts/apply-meko-fixes.sh /usr/local/sbin/mtproxy-meko-tuning
 install -m 0755 scripts/apply-meko-firewall.sh /usr/local/sbin/mtproxy-meko-firewall
 /usr/local/sbin/mtproxy-meko-firewall "$FIREWALL_PRESET" "$NGINX_PORT"
 
