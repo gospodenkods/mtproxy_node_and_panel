@@ -34,7 +34,10 @@ export function generateNginxConfig(proxies: ProxyConfig[], ipMap: Map<string, s
   };
 
   // For SNI proxies with connection limits, assign internal loopback ports (10001+)
-  const limitSniProxies = sniProxies.filter((p) => p.maxConnections && p.maxConnections > 0);
+  const singleSniProxy = sniProxies.length === 1 ? sniProxies[0] : undefined;
+  const limitSniProxies = singleSniProxy
+    ? []
+    : sniProxies.filter((p) => p.maxConnections && p.maxConnections > 0);
   const limitPortMap = new Map<string, number>();
   limitSniProxies.forEach((p, i) => {
     limitPortMap.set(p.domain, 10001 + i);
@@ -59,7 +62,20 @@ export function generateNginxConfig(proxies: ProxyConfig[], ipMap: Map<string, s
   const denyEntries = blacklistedIps.map((ip) => `        deny ${ip};`).join('\n');
 
   // Main SNI server block on nginxPort
-  const mainServer = `    server {
+  // A single proxy does not need SNI routing. Passing bytes straight through
+  // avoids holding reconnect packets in ssl_preread on some mobile networks.
+  const mainServer = singleSniProxy
+    ? `${singleSniProxy.maxConnections && singleSniProxy.maxConnections > 0
+      ? `    limit_conn_zone $remote_addr zone=single_proxy:1m;\n`
+      : ''}    server {
+        listen ${nginxPort};
+        proxy_pass ${target(singleSniProxy, nginxPort)};
+        proxy_connect_timeout 10s;
+        proxy_timeout 300s;
+${denyEntries ? denyEntries + '\n' : ''}${singleSniProxy.maxConnections && singleSniProxy.maxConnections > 0
+      ? `        limit_conn single_proxy ${singleSniProxy.maxConnections};\n`
+      : ''}    }`
+    : `    server {
         listen ${nginxPort};
         proxy_pass $backend;
         ssl_preread on;
