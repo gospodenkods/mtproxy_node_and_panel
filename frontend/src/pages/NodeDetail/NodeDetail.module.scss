@@ -33,6 +33,34 @@
   margin-bottom: 16px;
 }
 
+.tokenCard {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px;
+  margin-bottom: 24px;
+}
+
+.tokenLabel {
+  margin-bottom: 8px;
+  color: var(--g-color-text-secondary);
+  font-size: 13px;
+}
+
+.tokenValue {
+  display: block;
+  max-width: min(620px, 70vw);
+  overflow-wrap: anywhere;
+  font-size: 14px;
+}
+
+.tokenActions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
 .nameRow {
   margin: 0;
   display: flex;
@@ -59,4 +87,15 @@
 
 .saveRow {
   margin-top: 8px;
+}
+
+@media (max-width: 720px) {
+  .tokenCard {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .tokenValue {
+    max-width: 100%;
+  }
 }

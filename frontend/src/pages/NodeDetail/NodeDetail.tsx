@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button, Card, Loader, Label, Alert, TextArea } from '@gravity-ui/uikit';
 import AddProxyDialog from '../../components/AddProxyDialog';
@@ -6,6 +6,7 @@ import EditProxyDialog from '../../components/EditProxyDialog';
 import ProxyCard from '../../components/ProxyCard';
 import FlagIcon from '../../components/FlagIcon';
 import { useNodeDetail } from '../../hooks/useNodeDetail';
+import { copyToClipboard } from '../../utils/clipboard';
 import s from './NodeDetail.module.scss';
 
 export default function NodeDetail() {
@@ -20,6 +21,15 @@ export default function NodeDetail() {
   } = useNodeDetail();
 
   const importInputRef = useRef<HTMLInputElement>(null);
+  const [tokenVisible, setTokenVisible] = useState(false);
+  const [tokenCopied, setTokenCopied] = useState(false);
+
+  const handleCopyToken = async () => {
+    if (!node?.token) return;
+    await copyToClipboard(node.token);
+    setTokenCopied(true);
+    setTimeout(() => setTokenCopied(false), 2000);
+  };
 
   if (loading) {
     return <div className={s.loader}><Loader size="l" /></div>;
@@ -41,6 +51,25 @@ export default function NodeDetail() {
         <div className={s.errorWrap}>
           <Alert theme="danger" message={error} onClose={() => setError('')} />
         </div>
+      )}
+
+      {node?.token && (
+        <Card view="outlined" className={s.tokenCard}>
+          <div>
+            <div className={s.tokenLabel}>API-токен сервис-ноды</div>
+            <code className={s.tokenValue}>
+              {tokenVisible ? node.token : '•'.repeat(Math.min(node.token.length, 32))}
+            </code>
+          </div>
+          <div className={s.tokenActions}>
+            <Button view="outlined" size="s" onClick={() => setTokenVisible((visible) => !visible)}>
+              {tokenVisible ? 'Скрыть' : 'Показать'}
+            </Button>
+            <Button view="outlined" size="s" onClick={handleCopyToken}>
+              {tokenCopied ? 'Скопировано' : 'Копировать'}
+            </Button>
+          </div>
+        </Card>
       )}
 
       <div className={s.proxiesHeader}>
