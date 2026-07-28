@@ -42,7 +42,7 @@ export async function createProxy(req: ProxyCreateRequest): Promise<ProxyConfig>
   // Handle VPN subscription
   let vpnContainerName: string | undefined;
   let socks5Host: string | undefined;
-  if (req.vpnSubscription) {
+  if (!req.directOutbound && req.vpnSubscription) {
     vpnContainerName = `${config.xrayContainerPrefix}${id}`;
     const vlessConfig = await xrayService.fetchAndParseSubscription(req.vpnSubscription);
     await xrayService.createXrayContainer(vpnContainerName, vlessConfig);
@@ -64,12 +64,14 @@ export async function createProxy(req: ProxyCreateRequest): Promise<ProxyConfig>
     connectedIps: [],
     vpnContainerName,
     ...req,
-    natIp: req.natIp || config.natIp || undefined,
-    tunnelInterface: req.tunnelInterface || config.tunnelInterface || undefined,
+    directOutbound: !!req.directOutbound,
+    natIp: req.directOutbound ? undefined : (req.natIp || config.natIp || undefined),
+    tunnelInterface: req.directOutbound ? undefined : (req.tunnelInterface || config.tunnelInterface || undefined),
   };
 
   try {
-    await dockerService.createProxyContainer(containerName, secret, domain, req.listenPort || config.nginxPort, req.tag, socks5Host, req.maskHost, req.natIp || config.natIp || undefined, req);
+    const effectiveNatIp = req.directOutbound ? undefined : (req.natIp || config.natIp || undefined);
+    await dockerService.createProxyContainer(containerName, secret, domain, req.listenPort || config.nginxPort, req.tag, socks5Host, req.maskHost, effectiveNatIp, req);
     store.addProxy(proxy);
     await nginxService.updateNginxConfig(store.getAllProxies());
     return proxy;
@@ -168,6 +170,8 @@ export async function updateProxy(id: string, req: ProxyUpdateRequest): Promise<
     'censorshipTlsEmulation',
     'censorshipTlsFrontDir',
     'meInitRetryAttempts',
+    'clientHandshake',
+    'clientKeepalive',
   ];
   for (const key of advancedProxyKeys) {
     if (req[key] !== undefined && req[key] !== proxy[key]) {
@@ -189,6 +193,10 @@ export async function updateProxy(id: string, req: ProxyUpdateRequest): Promise<
   }
   if (req.tunnelInterface !== undefined) {
     updates.tunnelInterface = req.tunnelInterface || undefined;
+  }
+  if (req.directOutbound !== undefined && req.directOutbound !== !!proxy.directOutbound) {
+    updates.directOutbound = req.directOutbound;
+    needsRestart = true;
   }
 
   // Handle VPN subscription change
@@ -216,14 +224,17 @@ export async function updateProxy(id: string, req: ProxyUpdateRequest): Promise<
 
   if (needsRestart) {
     await dockerService.removeProxyContainer(proxy.containerName);
-    const effectiveNatIp = updates.natIp !== undefined ? updates.natIp : (proxy.natIp || config.natIp || undefined);
+    const useDirect = req.directOutbound !== undefined ? req.directOutbound : !!proxy.directOutbound;
+    const effectiveNatIp = useDirect
+      ? undefined
+      : (updates.natIp !== undefined ? updates.natIp : (proxy.natIp || config.natIp || undefined));
     await dockerService.createProxyContainer(
       proxy.containerName,
       proxy.secret,
       updates.domain || proxy.domain,
       proxy.listenPort || config.nginxPort,
       updates.tag !== undefined ? updates.tag : proxy.tag,
-      newSocks5Host,
+      useDirect ? undefined : newSocks5Host,
       updates.maskHost !== undefined ? updates.maskHost : proxy.maskHost,
       effectiveNatIp,
       Object.assign({}, proxy, req)
@@ -251,7 +262,7 @@ export async function restartProxy(id: string): Promise<ProxyConfig | undefined>
     proxy.tag,
     proxy.vpnContainerName,
     proxy.maskHost,
-    config.natIp || undefined,
+    proxy.directOutbound ? undefined : (proxy.natIp || config.natIp || undefined),
     proxy
   );
 
@@ -412,6 +423,7 @@ export interface ExportedProxy {
   maskHost?: string;
   natIp?: string;
   tunnelInterface?: string;
+  directOutbound?: boolean;
   useMiddleProxy?: boolean;
   fastMode?: boolean;
   me2dcFallback?: boolean;
@@ -472,6 +484,7 @@ export function exportProxies(): ExportBundle {
       maskHost: p.maskHost,
       natIp: p.natIp,
       tunnelInterface: p.tunnelInterface,
+      directOutbound: p.directOutbound,
       useMiddleProxy: p.useMiddleProxy,
       fastMode: p.fastMode,
       me2dcFallback: p.me2dcFallback,
@@ -528,6 +541,7 @@ export async function importProxies(bundle: ExportBundle): Promise<{ imported: n
         maskHost: p.maskHost,
         natIp: p.natIp,
         tunnelInterface: p.tunnelInterface,
+        directOutbound: p.directOutbound,
         useMiddleProxy: p.useMiddleProxy,
         fastMode: p.fastMode,
         me2dcFallback: p.me2dcFallback,

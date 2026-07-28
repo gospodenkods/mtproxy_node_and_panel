@@ -195,6 +195,7 @@ export interface ProxyData {
   maskHost?: string;
   natIp?: string;
   tunnelInterface?: string;
+  directOutbound?: boolean;
   useMiddleProxy?: boolean;
   fastMode?: boolean;
   me2dcFallback?: boolean;
@@ -260,6 +261,7 @@ export interface CreateProxyRequest {
   maskHost?: string;
   natIp?: string;
   tunnelInterface?: string;
+  directOutbound?: boolean;
   useMiddleProxy?: boolean;
   fastMode?: boolean;
   me2dcFallback?: boolean;
@@ -309,6 +311,7 @@ export interface UpdateProxyRequest {
   maskHost?: string;
   natIp?: string;
   tunnelInterface?: string;
+  directOutbound?: boolean;
   useMiddleProxy?: boolean;
   fastMode?: boolean;
   me2dcFallback?: boolean;

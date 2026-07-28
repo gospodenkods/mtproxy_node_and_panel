@@ -20,7 +20,7 @@ export default function AddProxyDialog({ open, onClose, nodeId, nodes, onCreated
   const [tag, setTag] = useState('');
   const [maxConnections, setMaxConnections] = useState('');
   const [listenPort, setListenPort] = useState('');
-  const [outboundMode, setOutboundMode] = useState<'vpn' | 'tunnel'>('vpn');
+  const [outboundMode, setOutboundMode] = useState<'direct' | 'vpn' | 'tunnel'>('direct');
   const [vpnSubscription, setVpnSubscription] = useState('');
   const [natIp, setNatIp] = useState('');
   const [tunnelInterface, setTunnelInterface] = useState('');
@@ -54,6 +54,7 @@ export default function AddProxyDialog({ open, onClose, nodeId, nodes, onCreated
         natIp: outboundMode === 'tunnel' ? (natIp || undefined) : undefined,
         tunnelInterface: outboundMode === 'tunnel' ? (tunnelInterface || undefined) : undefined,
         maskHost: maskHost || undefined,
+        directOutbound: outboundMode === 'direct',
         ...restOpts,
         stunServers: stunStr.split(',').map((s) => s.trim()).filter(Boolean),
         censorshipTlsDomain: censD || undefined,
@@ -147,14 +148,21 @@ export default function AddProxyDialog({ open, onClose, nodeId, nodes, onCreated
                 </div>
                 <RadioButton
                   value={outboundMode}
-                  onUpdate={(v) => setOutboundMode(v as 'vpn' | 'tunnel')}
+                  onUpdate={(v) => setOutboundMode(v as 'direct' | 'vpn' | 'tunnel')}
                   size="m"
                   options={[
+                    { value: 'direct', content: 'Напрямую' },
                     { value: 'vpn', content: 'VPN-подписка' },
                     { value: 'tunnel', content: 'Туннель (SSH/VPN)' },
                   ]}
                 />
               </div>
+              {outboundMode === 'direct' && (
+                <Alert
+                  theme="info"
+                  message="Telemt будет подключаться к Telegram напрямую с публичного IP сервис-ноды, без VPN, SOCKS5 и туннелей."
+                />
+              )}
               {outboundMode === 'vpn' && (
                 <div className="dialog-field">
                   <label>VLESS URL или socks5:// (опционально)</label>

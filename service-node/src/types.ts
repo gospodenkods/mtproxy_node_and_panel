@@ -26,6 +26,7 @@ export interface ProxyConfig {
   maskHost?: string;         // self-steal fallback host:port (non-MTProto traffic redirect)
   natIp?: string;            // tunnel exit node public IP (overrides node-level NAT_IP)
   tunnelInterface?: string;  // tunnel interface name, e.g. tun0 (for reference/future automation)
+  directOutbound?: boolean;  // bypass node-level NAT/VPN defaults and connect directly
   useMiddleProxy?: boolean;
   fastMode?: boolean;
   me2dcFallback?: boolean;
@@ -77,6 +78,7 @@ export interface ProxyCreateRequest {
   maskHost?: string;
   natIp?: string;
   tunnelInterface?: string;
+  directOutbound?: boolean;
   useMiddleProxy?: boolean;
   fastMode?: boolean;
   me2dcFallback?: boolean;
@@ -126,6 +128,7 @@ export interface ProxyUpdateRequest {
   maskHost?: string;
   natIp?: string;
   tunnelInterface?: string;
+  directOutbound?: boolean;
   useMiddleProxy?: boolean;
   fastMode?: boolean;
   me2dcFallback?: boolean;

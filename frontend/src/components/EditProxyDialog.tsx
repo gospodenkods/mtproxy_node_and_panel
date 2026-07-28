@@ -61,7 +61,11 @@ export default function EditProxyDialog({ open, onClose, nodeId, proxy, onUpdate
   const [tag, setTag] = useState(proxy.tag || '');
   const [maxConnections, setMaxConnections] = useState(proxy.maxConnections ? proxy.maxConnections.toString() : '');
   const [listenPort, setListenPort] = useState(proxy.listenPort ? proxy.listenPort.toString() : '');
-  const [outboundMode, setOutboundMode] = useState<'vpn' | 'tunnel'>(proxy.natIp || proxy.tunnelInterface ? 'tunnel' : 'vpn');
+  const [outboundMode, setOutboundMode] = useState<'direct' | 'vpn' | 'tunnel'>(
+    proxy.directOutbound || (!proxy.vpnSubscription && !proxy.natIp && !proxy.tunnelInterface)
+      ? 'direct'
+      : proxy.natIp || proxy.tunnelInterface ? 'tunnel' : 'vpn',
+  );
   const [vpnSubscription, setVpnSubscription] = useState(proxy.vpnSubscription || '');
   const [natIp, setNatIp] = useState(proxy.natIp || '');
   const [tunnelInterface, setTunnelInterface] = useState(proxy.tunnelInterface || '');
@@ -78,7 +82,11 @@ export default function EditProxyDialog({ open, onClose, nodeId, proxy, onUpdate
     setTag(proxy.tag || '');
     setMaxConnections(proxy.maxConnections ? proxy.maxConnections.toString() : '');
     setListenPort(proxy.listenPort ? proxy.listenPort.toString() : '');
-    setOutboundMode(proxy.natIp || proxy.tunnelInterface ? 'tunnel' : 'vpn');
+    setOutboundMode(
+      proxy.directOutbound || (!proxy.vpnSubscription && !proxy.natIp && !proxy.tunnelInterface)
+        ? 'direct'
+        : proxy.natIp || proxy.tunnelInterface ? 'tunnel' : 'vpn',
+    );
     setVpnSubscription(proxy.vpnSubscription || '');
     setNatIp(proxy.natIp || '');
     setTunnelInterface(proxy.tunnelInterface || '');
@@ -116,6 +124,7 @@ export default function EditProxyDialog({ open, onClose, nodeId, proxy, onUpdate
           ? (tunnelInterface !== (proxy.tunnelInterface || '') ? tunnelInterface : undefined)
           : (proxy.tunnelInterface ? '' : undefined),
         maskHost: maskHost !== (proxy.maskHost || '') ? maskHost : undefined,
+        directOutbound: outboundMode === 'direct',
         ...restOpts,
         stunServers: stunStr.split(',').map((s) => s.trim()).filter(Boolean),
         censorshipTlsDomain: censD || undefined,
@@ -193,14 +202,21 @@ export default function EditProxyDialog({ open, onClose, nodeId, proxy, onUpdate
                 </div>
                 <RadioButton
                   value={outboundMode}
-                  onUpdate={(v) => setOutboundMode(v as 'vpn' | 'tunnel')}
+                  onUpdate={(v) => setOutboundMode(v as 'direct' | 'vpn' | 'tunnel')}
                   size="m"
                   options={[
+                    { value: 'direct', content: 'Напрямую' },
                     { value: 'vpn', content: 'VPN-подписка' },
                     { value: 'tunnel', content: 'Тоннель (SSH/VPN)' },
                   ]}
                 />
               </div>
+              {outboundMode === 'direct' && (
+                <Alert
+                  theme="info"
+                  message="VPN-контейнер и параметры туннеля будут отключены. Telemt будет выходить напрямую через публичный IP сервис-ноды."
+                />
+              )}
               {outboundMode === 'vpn' && (
                 <div className="dialog-field">
                   <label>VLESS URL или socks5:// (пусто = отключить)</label>
