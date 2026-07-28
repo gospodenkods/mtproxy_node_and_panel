@@ -62,7 +62,7 @@ if [ -n "$FORCE_BRANCH" ]; then
     BRANCH="$FORCE_BRANCH"
 else
     BRANCH=$(git remote show origin 2>/dev/null | grep 'HEAD branch' | awk '{print $NF}')
-    BRANCH=${BRANCH:-master}
+    BRANCH=${BRANCH:-main}
 fi
 echo -e "  Ветка: ${YELLOW}${BRANCH}${NC}"
 

@@ -1,0 +1,164 @@
+import express from 'express';
+import cors from 'cors';
+import { config, FAKE_TLS_DOMAINS } from './config';
+import { authMiddleware } from './middleware/auth';
+import proxyRoutes from './routes/proxy';
+import healthRoutes from './routes/health';
+import { ensureNetwork, ensureProxyImage, reconnectContainersToNetwork } from './services/docker';
+import { ensureNginxContainer, updateNginxConfig } from './services/nginx';
+import { startNginxLogWatcher } from './services/nginx';
+import { getAllProxies, getCustomDomains, setCustomDomains, getBlacklistedIps, setBlacklistedIps } from './store';
+import { collectAllProxyStats, exportProxies, importProxies, ExportBundle } from './services/proxy';
+import { ensureXrayContainersRunning } from './services/xray';
+import { execFile } from 'child_process';
+
+const app = express();
+
+app.use(cors());
+app.use(express.json());
+
+// Health check (no auth)
+app.use('/api/health', healthRoutes);
+
+// Protected routes
+app.use('/api/proxies', authMiddleware, proxyRoutes);
+
+// Update service node
+app.post('/api/update', authMiddleware, (_req, res) => {
+  const scriptPath = '/app/project/update.sh';
+  execFile('/bin/bash', [scriptPath], { cwd: '/app/project', timeout: 120000 }, (error, stdout, stderr) => {
+    if (error) {
+      res.status(500).json({ success: false, error: error.message, output: stderr || stdout });
+      return;
+    }
+    res.json({ success: true, output: stdout });
+  });
+});
+
+// Domain dictionary
+app.get('/api/domains', authMiddleware, (_req, res) => {
+  const custom = getCustomDomains();
+  res.json({ domains: custom.length > 0 ? custom : FAKE_TLS_DOMAINS });
+});
+
+app.put('/api/domains', authMiddleware, (req, res) => {
+  const { domains } = req.body;
+  if (!Array.isArray(domains) || !domains.every((d: unknown) => typeof d === 'string')) {
+    res.status(400).json({ error: 'domains must be an array of strings' });
+    return;
+  }
+  setCustomDomains(domains);
+  res.json({ domains: getCustomDomains() });
+});
+
+// IP Blacklist
+app.get('/api/blacklist', authMiddleware, (_req, res) => {
+  res.json({ ips: getBlacklistedIps() });
+});
+
+app.put('/api/blacklist', authMiddleware, async (req, res) => {
+  const { ips } = req.body;
+  if (!Array.isArray(ips) || !ips.every((ip: unknown) => typeof ip === 'string')) {
+    res.status(400).json({ error: 'ips must be an array of strings' });
+    return;
+  }
+  setBlacklistedIps(ips);
+  // Regenerate nginx config to apply deny rules
+  try {
+    await updateNginxConfig(getAllProxies());
+  } catch (e) {
+    // non-fatal
+  }
+  res.json({ ips: getBlacklistedIps() });
+});
+
+// Export proxy configuration
+app.get('/api/export', authMiddleware, (_req, res) => {
+  const bundle = exportProxies();
+  res.setHeader('Content-Type', 'application/json');
+  res.setHeader('Content-Disposition', `attachment; filename="proxies-export-${new Date().toISOString().slice(0, 10)}.json"`);
+  res.json(bundle);
+});
+
+// Import proxy configuration
+app.post('/api/import', authMiddleware, express.json({ limit: '10mb' }), async (req, res) => {
+  const bundle = req.body as ExportBundle;
+  if (!bundle || bundle.version !== 1 || !Array.isArray(bundle.proxies)) {
+    res.status(400).json({ error: 'Invalid export bundle format' });
+    return;
+  }
+  try {
+    const result = await importProxies(bundle);
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+async function bootstrap(): Promise<void> {
+  try {
+    console.log('Initializing Docker network...');
+    await ensureNetwork();
+
+    // Start HTTP server immediately so health checks pass during heavy init
+    app.listen(config.port, '0.0.0.0', () => {
+      console.log(`Service node running on port ${config.port}`);
+    });
+
+    // Heavy initialization runs in background — does not block the HTTP server
+    (async () => {
+      try {
+        console.log('Reconnecting containers to network...');
+        await reconnectContainersToNetwork();
+
+        console.log('Building telemt proxy image...');
+        await ensureProxyImage();
+
+        // Ensure xray (VPN) containers are running BEFORE telemt containers.
+        // After a server reboot Docker starts all containers in parallel; if telemt
+        // starts before xray is ready, proxychains cannot connect and VPN stops
+        // working until the proxy config is manually saved.
+        const xrayContainerNames = getAllProxies()
+          .map((p) => p.vpnContainerName)
+          .filter((n): n is string => !!n);
+        if (xrayContainerNames.length > 0) {
+          console.log(`Ensuring ${xrayContainerNames.length} xray container(s) are running...`);
+          await ensureXrayContainersRunning(xrayContainerNames);
+        }
+
+        console.log('Initializing nginx container...');
+        await ensureNginxContainer();
+
+        const proxies = getAllProxies();
+        if (proxies.length > 0) {
+          console.log(`Restoring nginx config for ${proxies.length} proxies...`);
+          await updateNginxConfig(proxies);
+        }
+
+        // Background stats collector — every 5 minutes
+        setInterval(async () => {
+          try {
+            await collectAllProxyStats();
+          } catch (err) {
+            console.error('Background stats collection error:', err);
+          }
+        }, 5 * 60 * 1000);
+
+        // Run first collection after 30 seconds so containers are ready
+        setTimeout(() => collectAllProxyStats().catch(() => {}), 30000);
+
+        // Real-time IP recording from nginx log stream
+        startNginxLogWatcher();
+
+        console.log('Background initialization complete.');
+      } catch (err) {
+        console.error('Background initialization error:', err);
+      }
+    })();
+  } catch (error) {
+    console.error('Failed to start service node:', error);
+    process.exit(1);
+  }
+}
+
+bootstrap();

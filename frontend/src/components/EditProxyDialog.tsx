@@ -48,6 +48,8 @@ function proxyToAdvanced(proxy: ProxyData): AdvancedOptions {
     censorshipTlsEmulation: proxy.censorshipTlsEmulation ?? DEFAULT_ADVANCED.censorshipTlsEmulation,
     censorshipTlsFrontDir: proxy.censorshipTlsFrontDir ?? DEFAULT_ADVANCED.censorshipTlsFrontDir,
     meInitRetryAttempts: proxy.meInitRetryAttempts ?? DEFAULT_ADVANCED.meInitRetryAttempts,
+    clientHandshake: proxy.clientHandshake ?? DEFAULT_ADVANCED.clientHandshake,
+    clientKeepalive: proxy.clientKeepalive ?? DEFAULT_ADVANCED.clientKeepalive,
   };
 }
 
@@ -225,7 +227,7 @@ export default function EditProxyDialog({ open, onClose, nodeId, proxy, onUpdate
           )}
 
             {activeTab === 'telemt' && (
-              <TelemtFields opts={advancedOptions} set={setAdvancedOptions} />
+              <TelemtFields opts={advancedOptions} set={setAdvancedOptions} onApplyMeko={() => setMaxConnections('16384')} />
             )}
           </div>
         </form>

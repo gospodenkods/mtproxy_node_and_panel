@@ -1,0 +1,36 @@
+name: mtproto-node
+
+services:
+  service-node:
+    build:
+      context: .
+      provenance: false
+    image: ghcr.io/gospodenkods/mtproto-node:latest
+    container_name: mtproto-service-node
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+    ports:
+      - "${PORT:-8443}:8443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./data:/app/data
+      - .:/app/project
+    environment:
+      - PORT=8443
+      - AUTH_TOKEN=${AUTH_TOKEN}
+      - NGINX_PORT=${NGINX_PORT:-443}
+      - DATA_DIR=/app/data
+    networks:
+      - mtproto-net
+
+networks:
+  mtproto-net:
+    external: true
+    name: mtproto-net

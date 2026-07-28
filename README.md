@@ -1,5 +1,28 @@
 # MTProto Panel
 
+> Единый репозиторий web-панели и сервис-ноды Telemt с MEKO fixes.
+> Панель находится в корне, исходники ноды — в каталоге `service-node`.
+
+## Установка из этого репозитория
+
+Панель и сервис-нода обычно устанавливаются на разные серверы.
+
+### Web-панель
+
+```bash
+bash <(curl -fsSL https://raw.githubusercontent.com/gospodenkods/mtproxy_node_and_panel/main/install-panel.sh)
+```
+
+### Сервис-нода
+
+```bash
+bash <(curl -fsSL https://raw.githubusercontent.com/gospodenkods/mtproxy_node_and_panel/main/install-node.sh)
+```
+
+После установки ноды сохраните выведенный API-токен, откройте web-панель и
+добавьте узел с его IP, API-портом и токеном. При создании прокси вкладка
+**Telemt** позволяет редактировать конфигурацию и применять пресет MEKO.
+
 Веб-панель управления MTProto прокси серверами. Позволяет централизованно управлять несколькими сервис-нодами, создавать и настраивать прокси, просматривать статистику и следить за подключениями.
 
 ## Возможности
@@ -58,7 +81,7 @@
 Одна команда для загрузки и запуска:
 
 ```bash
-bash <(wget -qO- https://raw.githubusercontent.com/danielVNru/mtproto-panel/master/install.sh)
+bash <(wget -qO- https://raw.githubusercontent.com/gospodenkods/mtproxy_node_and_panel/main/install-panel.sh)
 ```
 
 Скрипт автоматически:
@@ -77,7 +100,7 @@ bash <(wget -qO- https://raw.githubusercontent.com/danielVNru/mtproto-panel/mast
 
 ```bash
 cd /opt/mtproto-panel
-git pull origin master
+git pull origin main
 docker compose up -d --build
 ```
 
@@ -149,4 +172,17 @@ docker compose up -d --build
 
 ## Связанный проект
 
-Сервис-нода (устанавливается на каждый прокси-сервер): [mtproto-node](https://github.com/danielVNru/mtproto-node)
+Сервис-нода находится в каталоге [`service-node`](service-node).
+
+## Управление конфигурацией Telemt
+
+При создании или редактировании прокси откройте вкладку **Telemt**. Панель
+передаёт параметры сервис-ноде, которая атомарно пересоздаёт контейнер с новым
+`config.toml`. Доступны параметры подключения, реконнекта, keepalive, таймаутов,
+маскировки, сети и логирования.
+
+Кнопка **Применить пресет MEKO** устанавливает значения из
+`vaalaav/telemt-install`: `max_connections=16384`, `client_handshake=15`,
+`tg_connect=30`, `client_keepalive=120` и отключает принудительный MSS.
+Host-часть фиксов (BBR, TCP Fast Open, буферы и keepalive ядра) устанавливается
+скриптом сервис-ноды.

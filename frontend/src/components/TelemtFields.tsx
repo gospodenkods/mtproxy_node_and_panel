@@ -1,5 +1,5 @@
 import { Dispatch, SetStateAction } from 'react';
-import { Select, TextInput, HelpMark } from '@gravity-ui/uikit';
+import { Button, Select, TextInput, HelpMark } from '@gravity-ui/uikit';
 
 export const DEFAULT_ADVANCED = {
   useMiddleProxy: true,
@@ -36,6 +36,8 @@ export const DEFAULT_ADVANCED = {
   censorshipTlsEmulation: true,
   censorshipTlsFrontDir: '',
   meInitRetryAttempts: 5,
+  clientHandshake: 0,
+  clientKeepalive: 0,
 };
 
 export type AdvancedOptions = typeof DEFAULT_ADVANCED;
@@ -93,15 +95,38 @@ function NumInput({ value, onChange }: { value: number; onChange: (v: number) =>
 interface TelemtFieldsProps {
   opts: AdvancedOptions;
   set: Dispatch<SetStateAction<AdvancedOptions>>;
+  onApplyMeko?: () => void;
 }
 
-export function TelemtFields({ opts, set }: TelemtFieldsProps) {
+export function TelemtFields({ opts, set, onApplyMeko }: TelemtFieldsProps) {
   const upd = <K extends keyof AdvancedOptions>(key: K) =>
     (value: AdvancedOptions[K]) =>
       set((prev) => ({ ...prev, [key]: value } as AdvancedOptions));
 
   return (
     <div style={{ display: 'grid', gap: 10 }}>
+      <div style={{ padding: 12, borderRadius: 8, background: 'var(--g-color-base-generic)' }}>
+        <div style={{ fontWeight: 600, marginBottom: 6 }}>MEKO fixes</div>
+        <div style={{ color: 'var(--g-color-text-secondary)', marginBottom: 10 }}>
+          Применяет рекомендуемые параметры telemt: без MSS, 16384 соединения,
+          handshake 15 с, TG connect 30 с и keepalive 120 с.
+        </div>
+        <Button
+          view="outlined"
+          onClick={() => {
+            set((prev) => ({
+              ...prev,
+              serverClientMss: 0,
+              clientHandshake: 15,
+              tgConnect: 30,
+              clientKeepalive: 120,
+            }));
+            onApplyMeko?.();
+          }}
+        >
+          Применить пресет MEKO
+        </Button>
+      </div>
 
       <SectionLabel>Подключение</SectionLabel>
 
@@ -150,6 +175,16 @@ always — SO_LINGER(0) устанавливается при accept() и ник
       </div>
 
       <SectionLabel>Keepalive</SectionLabel>
+
+      <div className="dialog-field">
+        <FieldLabel label="client_handshake" help="Таймаут клиентского рукопожатия в секундах. 0 — использовать значение telemt по умолчанию." />
+        <NumInput value={opts.clientHandshake} onChange={upd('clientHandshake')} />
+      </div>
+
+      <div className="dialog-field">
+        <FieldLabel label="client_keepalive" help="Таймаут клиентского keepalive в секундах. 0 — использовать значение telemt по умолчанию." />
+        <NumInput value={opts.clientKeepalive} onChange={upd('clientKeepalive')} />
+      </div>
 
       <div className="dialog-field">
         <FieldLabel label="me_keepalive_enabled" help="Включить keepalive пакеты для ME соединений." />
@@ -231,7 +266,7 @@ always — SO_LINGER(0) устанавливается при accept() и ник
       </div>
 
       <div className="dialog-field">
-        <FieldLabel label="server_client_mss" help="MSS (Maximum Segment Size) для соединений клиент-сервер в байтах." />
+        <FieldLabel label="server_client_mss" help="MSS (Maximum Segment Size) для соединений клиент-сервер в байтах. 0 отключает параметр, как рекомендуют MEKO fixes." />
         <NumInput value={opts.serverClientMss} onChange={upd('serverClientMss')} />
       </div>
 

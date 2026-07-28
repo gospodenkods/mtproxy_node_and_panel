@@ -6,7 +6,7 @@ CYAN='\033[0;36m'
 RED='\033[0;31m'
 NC='\033[0m'
 
-REPO_URL="https://github.com/danielVNru/mtproto-panel.git"
+REPO_URL="https://github.com/gospodenkods/mtproxy_node_and_panel.git"
 INSTALL_DIR="/opt/mtproto-panel"
 
 echo -e "${CYAN}========================================${NC}"
@@ -101,12 +101,12 @@ fi
 if [ -d "$INSTALL_DIR/.git" ]; then
     echo -e "${CYAN}Обновление из репозитория...${NC}"
     cd "$INSTALL_DIR"
-    git fetch origin master
-    git reset --hard origin/master
+    git fetch origin main
+    git reset --hard origin/main
 else
     echo -e "${CYAN}Скачивание последней версии...${NC}"
     rm -rf "$INSTALL_DIR"
-    git clone --branch master "$REPO_URL" "$INSTALL_DIR"
+    git clone --branch main "$REPO_URL" "$INSTALL_DIR"
     if [ $? -ne 0 ]; then
         echo -e "${RED}Ошибка клонирования репозитория.${NC}"
         exit 1

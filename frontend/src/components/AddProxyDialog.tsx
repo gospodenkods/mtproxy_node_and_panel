@@ -181,7 +181,7 @@ export default function AddProxyDialog({ open, onClose, nodeId, nodes, onCreated
           )}
 
             {activeTab === 'telemt' && (
-              <TelemtFields opts={advancedOptions} set={setAdvancedOptions} />
+              <TelemtFields opts={advancedOptions} set={setAdvancedOptions} onApplyMeko={() => setMaxConnections('16384')} />
             )}
           </div>
         </form>

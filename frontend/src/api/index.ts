@@ -210,6 +210,8 @@ export interface ProxyData {
   censorshipTlsEmulation?: boolean;
   censorshipTlsFrontDir?: string;
   meInitRetryAttempts?: number;
+  clientHandshake?: number;
+  clientKeepalive?: number;
 }
 
 export interface ProxyStatsData {
@@ -273,6 +275,8 @@ export interface CreateProxyRequest {
   censorshipTlsEmulation?: boolean;
   censorshipTlsFrontDir?: string;
   meInitRetryAttempts?: number;
+  clientHandshake?: number;
+  clientKeepalive?: number;
 }
 
 export interface UpdateProxyRequest {
@@ -320,6 +324,8 @@ export interface UpdateProxyRequest {
   censorshipTlsEmulation?: boolean;
   censorshipTlsFrontDir?: string;
   meInitRetryAttempts?: number;
+  clientHandshake?: number;
+  clientKeepalive?: number;
 }
 
 export interface StatsSnapshotData {
