@@ -159,8 +159,8 @@ docker compose up -d --build
 | Контейнер | Описание | Порт |
 |-----------|----------|------|
 | `mtproto-service-node` | Express API + управление | `${PORT}:8443` |
-| `mtproto-nginx` | nginx stream proxy (fake TLS) | `${NGINX_PORT}:443+` |
-| `mtproto-proxy-*` | MTProto прокси контейнеры (telemt) | внутренняя сеть |
+| `mtproto-nginx` | необязательный nginx stream proxy при `DIRECT_TELEMT=false` | `${NGINX_PORT}:443+` |
+| `mtproto-proxy-*` | MTProto прокси контейнеры (telemt) | прямой `${NGINX_PORT}` или внутренняя сеть |
 | `mtproto-xray-*` | xray VLESS-туннели (только с VPN) | внутренняя сеть |
 
 ## Конфигурация (.env)
@@ -169,7 +169,8 @@ docker compose up -d --build
 |------------|----------|
 | `PORT` | Внешний порт API сервис-ноды |
 | `AUTH_TOKEN` | Токен авторизации для подключения из панели |
-| `NGINX_PORT` | Порт nginx для прокси-трафика (по умолчанию `443`) |
+| `NGINX_PORT` | Внешний порт Telemt (по умолчанию `443`) |
+| `DIRECT_TELEMT` | Публиковать Telemt напрямую без nginx stream (по умолчанию `true`, одна прокси-нода) |
 
 ## API
 
@@ -234,6 +235,11 @@ SYN limiter доступен как отдельный выбираемый пр
 только один backend, поэтому независимые лимитеры не накладываются на один порт:
 `nft-v3`, `nft-v2`, `iptables-v3` или `iptables-v2`. Для отключения выполните
 `sudo mtproxy-meko-firewall off`.
+
+Установщик автоматически выбирает `nft-v3`, применяет host tuning и включает
+восстановление правил после перезагрузки. В Docker-режиме V3 работает в
+`INPUT` и `FORWARD`. Iptables и nftables являются альтернативными реализациями
+одного фильтра и намеренно не включаются одновременно.
 - Порт 443 свободен (для nginx)
 - 512 MB RAM, 1 GB диск
 

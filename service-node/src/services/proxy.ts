@@ -8,6 +8,10 @@ import * as nginxService from './nginx';
 import * as xrayService from './xray';
 
 export async function createProxy(req: ProxyCreateRequest): Promise<ProxyConfig> {
+  if (config.directTelemt && store.getAllProxies().length > 0) {
+    throw new Error('DIRECT_TELEMT mode supports one proxy per service node');
+  }
+
   const id = uuidv4().split('-')[0];
   const secret = req.secret || generateSecret();
 
@@ -28,7 +32,7 @@ export async function createProxy(req: ProxyCreateRequest): Promise<ProxyConfig>
     domain = getRandomElement(available);
   }
 
-  let port = req.port || 0;
+  let port = config.directTelemt ? (req.listenPort || config.nginxPort) : (req.port || 0);
   if (!port) {
     do {
       port = getRandomPort(config.portRangeStart, config.portRangeEnd);

@@ -50,6 +50,7 @@ if [ -n "$RUNNING_PROXIES" ]; then
     PROXY_COUNT=$(echo "$RUNNING_PROXIES" | wc -l)
     echo -e "  Найдено запущенных прокси: ${YELLOW}${PROXY_COUNT}${NC}"
 else
+    PROXY_COUNT=0
     echo -e "  Запущенных прокси не найдено"
 fi
 
@@ -76,12 +77,18 @@ git stash pop 2>/dev/null || true
 
 NGINX_PORT=$(grep '^NGINX_PORT=' .env | cut -d'=' -f2)
 NGINX_PORT=${NGINX_PORT:-443}
+if ! grep -q '^DIRECT_TELEMT=' .env; then
+    if [ "$PROXY_COUNT" -le 1 ]; then
+        echo 'DIRECT_TELEMT=true' >> .env
+    else
+        echo 'DIRECT_TELEMT=false' >> .env
+    fi
+fi
 bash scripts/apply-meko-fixes.sh "$NGINX_PORT"
 install -m 0755 scripts/apply-meko-fixes.sh /usr/local/sbin/mtproxy-meko-tuning
 install -m 0755 scripts/apply-meko-firewall.sh /usr/local/sbin/mtproxy-meko-firewall
-if [ -r /etc/mtproxy-meko-firewall.conf ]; then
-    /usr/local/sbin/mtproxy-meko-firewall --restore
-fi
+MEKO_FIREWALL_PRESET=${MEKO_FIREWALL_PRESET:-nft-v3}
+/usr/local/sbin/mtproxy-meko-firewall "$MEKO_FIREWALL_PRESET" "$NGINX_PORT"
 
 echo -e "${CYAN}[4/5] Загрузка и запуск обновлённой сервис-ноды...${NC}"
 export COMPOSE_PROJECT_NAME=mtproto-node
@@ -150,6 +157,8 @@ echo -e "${CYAN}[5/5] Восстановление прокси...${NC}"
 AUTH_TOKEN=$(grep '^AUTH_TOKEN=' .env | cut -d'=' -f2)
 PORT=$(grep '^PORT=' .env | cut -d'=' -f2)
 PORT=${PORT:-8443}
+DIRECT_TELEMT=$(grep '^DIRECT_TELEMT=' .env | cut -d'=' -f2)
+DIRECT_TELEMT=${DIRECT_TELEMT:-true}
 
 # Получаем список прокси из API и запускаем остановленные
 PROXIES_RESPONSE=$(curl -s -H "Authorization: Bearer ${AUTH_TOKEN}" "http://localhost:${PORT}/api/proxies" 2>/dev/null || echo "[]")
@@ -168,7 +177,9 @@ if [ "$PROXIES_RESPONSE" != "[]" ] && [ -n "$PROXIES_RESPONSE" ]; then
 
             STATUS=$(echo "$STATUS_RESPONSE" | grep -o '"status":"[^"]*"' | head -1 | cut -d'"' -f4)
 
-            if [ "$STATUS" != "running" ]; then
+            # Recreate existing containers during migration to direct Telemt so
+            # Docker publishes TCP/443 and the stopped nginx proxy is not needed.
+            if [ "$STATUS" != "running" ] || [ "$DIRECT_TELEMT" = "true" ]; then
                 # Пересоздаём контейнер прокси через restart endpoint.
                 # После обновления нода может ещё завершать bootstrap, поэтому делаем несколько попыток.
                 RESULT="000"

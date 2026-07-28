@@ -19,10 +19,9 @@ export async function applyAllMekoRecommendations(): Promise<ApplyMekoResult> {
   const warnings: string[] = [];
 
   await runOnHost(['/usr/local/sbin/mtproxy-meko-tuning', String(ports[0] || config.nginxPort)]);
-  // The known-fast reference host has no active SYN fingerprint limiter.
-  // Keep manual MEKO presets available, but the one-click mobile profile must
-  // not reject or delay clients whose first packets do not match a fingerprint.
-  const firewall = await applyFirewallPreset('off', []);
+  // MEKO V3 is the recommended classifier. The host helper installs identical
+  // rules in INPUT and FORWARD, so it works with native and Docker listeners.
+  const firewall = await applyFirewallPreset('nft-v3', ports);
 
   if (config.nginxPort !== 443) {
     warnings.push(

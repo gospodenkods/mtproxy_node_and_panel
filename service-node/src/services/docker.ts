@@ -238,10 +238,10 @@ function generateConfigToml(
     updateEvery: 30,
     networkPrefer: 'system',
     stunServers: ['stun.l.google.com:19302'],
-    serverClientMss: 1360,
+    serverClientMss: 0,
     censorshipTlsDomain: domain,
     censorshipTlsEmulation: true,
-    censorshipTlsFrontDir: '',
+    censorshipTlsFrontDir: 'tlsfront',
     clientHandshake: 0,
     clientKeepalive: 0,
     ...options,
@@ -405,8 +405,12 @@ export async function createProxyContainer(
   const container = await docker.createContainer({
     Image: config.proxyImageName,
     name: containerName,
+    ...(config.directTelemt ? { ExposedPorts: { [`${listenPort}/tcp`]: {} } } : {}),
     HostConfig: {
       NetworkMode: config.dockerNetwork,
+      ...(config.directTelemt
+        ? { PortBindings: { [`${listenPort}/tcp`]: [{ HostIp: '0.0.0.0', HostPort: String(listenPort) }] } }
+        : {}),
       RestartPolicy: { Name: 'unless-stopped' },
       CapAdd: ['NET_BIND_SERVICE'],
       Ulimits: [{ Name: 'nofile', Soft: 65535, Hard: 65535 }],

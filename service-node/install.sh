@@ -114,7 +114,7 @@ if ! [[ "$PORT" =~ ^[0-9]+$ ]] || [ "$PORT" -lt 1 ] || [ "$PORT" -gt 65535 ]; th
     exit 1
 fi
 
-read -p "Порт прокси (nginx) [443]: " NGINX_PORT
+read -p "Порт Telemt [443]: " NGINX_PORT
 NGINX_PORT=${NGINX_PORT:-443}
 
 if ! [[ "$NGINX_PORT" =~ ^[0-9]+$ ]] || [ "$NGINX_PORT" -lt 1 ] || [ "$NGINX_PORT" -gt 65535 ]; then
@@ -122,22 +122,9 @@ if ! [[ "$NGINX_PORT" =~ ^[0-9]+$ ]] || [ "$NGINX_PORT" -lt 1 ] || [ "$NGINX_POR
     exit 1
 fi
 
-echo ""
-echo -e "${CYAN}MEKO SYN firewall preset:${NC}"
-echo "  1) nftables V3 — TCP fingerprint, рекомендуется для Docker"
-echo "  2) nftables V2 — TTL + packet length"
-echo "  3) iptables V3 — u32 fingerprint"
-echo "  4) iptables V2 — TTL + packet length"
-echo "  5) Не применять"
-read -p "Выбор [1]: " FIREWALL_CHOICE
-case "${FIREWALL_CHOICE:-1}" in
-    1) FIREWALL_PRESET="nft-v3" ;;
-    2) FIREWALL_PRESET="nft-v2" ;;
-    3) FIREWALL_PRESET="iptables-v3" ;;
-    4) FIREWALL_PRESET="iptables-v2" ;;
-    5) FIREWALL_PRESET="off" ;;
-    *) echo -e "${RED}Некорректный вариант firewall preset.${NC}"; exit 1 ;;
-esac
+# Apply the complete compatible MEKO profile automatically. Do not stack
+# iptables and nftables variants because that would filter each SYN twice.
+FIREWALL_PRESET="${MEKO_FIREWALL_PRESET:-nft-v3}"
 
 # Generate 32-char token
 AUTH_TOKEN=$(openssl rand -hex 16)
@@ -155,6 +142,7 @@ echo ""
 cat > .env << EOF
 PORT=${PORT}
 NGINX_PORT=${NGINX_PORT}
+DIRECT_TELEMT=true
 AUTH_TOKEN=${AUTH_TOKEN}
 EOF
 

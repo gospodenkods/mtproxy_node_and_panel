@@ -196,7 +196,13 @@ Host-часть фиксов (BBR, TCP Fast Open, буферы и keepalive яд
 
 ### Firewall-пресеты MEKO
 
-При установке сервис-ноды можно выбрать один из пресетов оригинального
+Новая установка автоматически применяет полный совместимый профиль:
+host tuning (BBR/fq, TCP Fast Open, очереди и keepalive) плюс `nft-v3`.
+Варианты `iptables` и `nftables` не включаются одновременно: двойная
+фильтрация отбрасывает корректные повторные SYN. Для Docker правила V3
+устанавливаются как в `INPUT`, так и в `FORWARD`.
+
+После установки через панель можно выбрать другой пресет оригинального
 `MTPROTO_FIX_By_MEKO`:
 
 - `nft-v3` — TCP fingerprint, рекомендуемый вариант для Docker;
@@ -226,7 +232,7 @@ sudo mtproxy-meko-firewall off
 
 - автоматически собирает общий порт ноды и индивидуальные порты прокси;
 - применяет BBR/fq, TCP Fast Open, системные очереди, буферы и keepalive;
-- включает рекомендуемый для Docker `nftables V3`;
+- включает рекомендуемый для Docker `nftables V3` в `INPUT` и `FORWARD`;
 - открывает все найденные TCP-порты в активном UFW/firewalld;
 - отключает `server_client_mss`;
 - задаёт `max_connections=16384`, `client_handshake=15`,

@@ -165,6 +165,17 @@ ${limitBlocks ? limitBlocks + '\n' : ''}${portBlocks ? portBlocks + '\n' : ''}}
 export async function ensureNginxContainer(): Promise<void> {
   const containerName = config.nginxContainerName;
 
+  if (config.directTelemt) {
+    try {
+      const existing = docker.getContainer(containerName);
+      const info = await existing.inspect();
+      if (info.State.Running) await existing.stop();
+    } catch {
+      // Direct Telemt mode does not require the stream proxy.
+    }
+    return;
+  }
+
   try {
     const existing = docker.getContainer(containerName);
     const info = await existing.inspect();
@@ -226,6 +237,11 @@ export async function ensureNginxContainer(): Promise<void> {
 }
 
 export async function updateNginxConfig(proxies: ProxyConfig[]): Promise<void> {
+  if (config.directTelemt) {
+    await ensureNginxContainer();
+    return;
+  }
+
   // Filter out proxies whose containers don't exist (stale data)
   const aliveProxies: ProxyConfig[] = [];
   for (const p of proxies) {
@@ -498,6 +514,8 @@ async function watchNginxLogs(): Promise<void> {
 }
 
 export function startNginxLogWatcher(): void {
+  if (config.directTelemt) return;
+
   const reconnect = (delay = 0) => {
     setTimeout(async () => {
       try {

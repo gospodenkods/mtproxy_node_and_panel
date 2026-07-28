@@ -66,15 +66,24 @@ apply_nft() {
   nft delete table inet "$NFT_TABLE" 2>/dev/null || true
   nft add table inet "$NFT_TABLE"
   nft "add chain inet $NFT_TABLE input { type filter hook input priority 0; policy accept; }"
+  # Docker-published ports are DNATed before filtering and traverse FORWARD,
+  # while host-network/native listeners traverse INPUT. Install the same
+  # classifier in both hooks so the selected preset is effective in either
+  # deployment mode.
+  nft "add chain inet $NFT_TABLE forward { type filter hook forward priority 0; policy accept; }"
 
   for port in "${PORTS[@]}"; do
     if [[ "$version" == "v3" ]]; then
       nft "add rule inet $NFT_TABLE input tcp dport $port tcp flags & (syn|ack) == syn @th,108,20 0x2ffff @th,160,16 0x204 @th,192,16 0x103 @th,224,24 0x10108 @th,320,32 0x4020000 counter accept comment \"meko_ios_v3_$port\""
+      nft "add rule inet $NFT_TABLE forward tcp dport $port tcp flags & (syn|ack) == syn @th,108,20 0x2ffff @th,160,16 0x204 @th,192,16 0x103 @th,224,24 0x10108 @th,320,32 0x4020000 counter accept comment \"meko_ios_v3_fwd_$port\""
     else
       nft "add rule inet $NFT_TABLE input tcp dport $port tcp flags & (syn|ack) == syn ip ttl < 65 meta length 64 counter accept comment \"meko_ios_v2_$port\""
+      nft "add rule inet $NFT_TABLE forward tcp dport $port tcp flags & (syn|ack) == syn ip ttl < 65 meta length 64 counter accept comment \"meko_ios_v2_fwd_$port\""
     fi
     nft "add rule inet $NFT_TABLE input tcp dport $port tcp flags & (syn|ack) == syn meter meko_other_$port { ip saddr timeout 60s limit rate 54/minute burst 1 packets } counter accept comment \"meko_other_accept_$port\""
     nft "add rule inet $NFT_TABLE input tcp dport $port tcp flags & (syn|ack) == syn counter reject with tcp reset comment \"meko_other_reject_$port\""
+    nft "add rule inet $NFT_TABLE forward tcp dport $port tcp flags & (syn|ack) == syn meter meko_fwd_other_$port { ip saddr timeout 60s limit rate 54/minute burst 1 packets } counter accept comment \"meko_other_accept_fwd_$port\""
+    nft "add rule inet $NFT_TABLE forward tcp dport $port tcp flags & (syn|ack) == syn counter reject with tcp reset comment \"meko_other_reject_fwd_$port\""
   done
 }
 

@@ -26,6 +26,7 @@ services:
       - PORT=8443
       - AUTH_TOKEN=${AUTH_TOKEN}
       - NGINX_PORT=${NGINX_PORT:-443}
+      - DIRECT_TELEMT=${DIRECT_TELEMT:-true}
       - DATA_DIR=/app/data
     networks:
       - mtproto-net
