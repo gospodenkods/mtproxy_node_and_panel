@@ -147,6 +147,25 @@ export async function updateNodeService(id: number): Promise<{ success: boolean;
   });
 }
 
+export type FirewallPreset = 'nft-v3' | 'nft-v2' | 'iptables-v3' | 'iptables-v2' | 'off';
+
+export interface FirewallStatus {
+  preset: FirewallPreset;
+  ports: number[];
+  configured: boolean;
+}
+
+export async function getNodeFirewall(id: number): Promise<FirewallStatus> {
+  return request<FirewallStatus>(`/nodes/${id}/firewall`);
+}
+
+export async function applyNodeFirewall(id: number, preset: FirewallPreset, ports: number[]): Promise<FirewallStatus> {
+  return request<FirewallStatus>(`/nodes/${id}/firewall`, {
+    method: 'PUT',
+    body: JSON.stringify({ preset, ports }),
+  });
+}
+
 // Proxies
 export interface ConnectedIpInfo {
   ip: string;

@@ -1,12 +1,16 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button, Card, Label, Loader } from '@gravity-ui/uikit';
 import AddNodeDialog from '../../components/AddNodeDialog';
+import FirewallPresetDialog from '../../components/FirewallPresetDialog';
 import FlagIcon from '../../components/FlagIcon';
 import { useNodes } from '../../hooks/useNodes';
+import { NodeData } from '../../api';
 import s from './Nodes.module.scss';
 
 export default function Nodes() {
   const navigate = useNavigate();
+  const [firewallNode, setFirewallNode] = useState<NodeData | null>(null);
   const {
     nodes, loading, showAdd, setShowAdd,
     healthMap, updatingMap, proxiesMap, geoMap, versionMap,
@@ -81,6 +85,16 @@ export default function Nodes() {
               )}
 
               <div className={s.cardActions}>
+                <Button
+                  view="outlined"
+                  size="s"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setFirewallNode(node);
+                  }}
+                >
+                  Firewall
+                </Button>
                 <Button view="outlined" size="s" loading={updatingMap[node.id] || false} onClick={(e) => handleUpdate(node.id, e)}>
                   Обновить
                 </Button>
@@ -98,6 +112,7 @@ export default function Nodes() {
         onClose={() => setShowAdd(false)}
         onCreated={() => { setShowAdd(false); loadNodes(); }}
       />
+      <FirewallPresetDialog node={firewallNode} onClose={() => setFirewallNode(null)} />
     </>
   );
 }

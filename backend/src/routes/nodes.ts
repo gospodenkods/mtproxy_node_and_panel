@@ -168,6 +168,48 @@ router.post('/:id/update', async (req: AuthRequest, res: Response) => {
   }
 });
 
+// Get the MEKO firewall preset configured on a node
+router.get('/:id/firewall', async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await pool.query('SELECT ip, port, token FROM nodes WHERE id = $1', [req.params.id]);
+    if (result.rows.length === 0) {
+      res.status(404).json({ error: 'Node not found' });
+      return;
+    }
+    const node = result.rows[0];
+    const resp = await fetch(`http://${node.ip}:${node.port}/api/firewall`, {
+      headers: { Authorization: `Bearer ${node.token}` },
+      signal: AbortSignal.timeout(15000),
+    });
+    const data = await resp.json();
+    res.status(resp.status).json(data);
+  } catch (error: any) {
+    res.status(502).json({ error: `Failed to connect to node: ${error.message}` });
+  }
+});
+
+// Apply or disable a MEKO firewall preset on a node
+router.put('/:id/firewall', async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await pool.query('SELECT ip, port, token FROM nodes WHERE id = $1', [req.params.id]);
+    if (result.rows.length === 0) {
+      res.status(404).json({ error: 'Node not found' });
+      return;
+    }
+    const node = result.rows[0];
+    const resp = await fetch(`http://${node.ip}:${node.port}/api/firewall`, {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${node.token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(req.body),
+      signal: AbortSignal.timeout(120000),
+    });
+    const data = await resp.json();
+    res.status(resp.status).json(data);
+  } catch (error: any) {
+    res.status(502).json({ error: `Failed to connect to node: ${error.message}` });
+  }
+});
+
 // Get node domains
 router.get('/:id/domains', async (req: AuthRequest, res: Response) => {
   try {

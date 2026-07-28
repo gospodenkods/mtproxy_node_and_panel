@@ -4,6 +4,7 @@ import { config, FAKE_TLS_DOMAINS } from './config';
 import { authMiddleware } from './middleware/auth';
 import proxyRoutes from './routes/proxy';
 import healthRoutes from './routes/health';
+import firewallRoutes from './routes/firewall';
 import { ensureNetwork, ensureProxyImage, reconnectContainersToNetwork } from './services/docker';
 import { ensureNginxContainer, updateNginxConfig } from './services/nginx';
 import { startNginxLogWatcher } from './services/nginx';
@@ -22,6 +23,7 @@ app.use('/api/health', healthRoutes);
 
 // Protected routes
 app.use('/api/proxies', authMiddleware, proxyRoutes);
+app.use('/api/firewall', authMiddleware, firewallRoutes);
 
 // Update service node
 app.post('/api/update', authMiddleware, (_req, res) => {
