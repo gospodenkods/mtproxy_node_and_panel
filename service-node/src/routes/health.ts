@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 
-const router = Router();
+const router: Router = Router();
 
 let nodeVersion = 'unknown';
 try {

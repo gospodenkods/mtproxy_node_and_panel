@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import * as proxyService from '../services/proxy';
 
-const router = Router();
+const router: Router = Router();
 
 // List all proxies
 router.get('/', async (_req: Request, res: Response) => {

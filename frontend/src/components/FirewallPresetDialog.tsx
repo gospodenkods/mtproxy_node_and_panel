@@ -72,7 +72,7 @@ export default function FirewallPresetDialog({ node, onClose }: Props) {
 
   const handleApplyAll = async () => {
     if (!node || !confirm(
-      'Применить полный MEKO preset? Будут настроены sysctl, nftables V3 и параметры всех Telemt-прокси на этой ноде.',
+      'Применить быстрый мобильный профиль? Все прокси будут переведены на прямой исходящий трафик и общий внешний порт, VPN будет отключён, а дополнительный MEKO SYN limiter — снят.',
     )) return;
     setSaving(true);
     setError('');
@@ -82,10 +82,11 @@ export default function FirewallPresetDialog({ node, onClose }: Props) {
       setPreset(result.firewall.preset);
       setPorts(result.ports.join(', '));
       setResultMessage(
-        `MEKO применён: nftables V3 на портах ${result.ports.join(', ')}; обновлено прокси: ${result.updatedProxies}.`,
+        `Мобильный профиль применён: прямой выход, внешний TCP ${result.ports.join(', ')}, обновлено прокси: ${result.updatedProxies}.`,
       );
-      if (result.errors.length > 0) {
-        setError(result.errors.join('; '));
+      const messages = [...result.warnings, ...result.errors];
+      if (messages.length > 0) {
+        setError(messages.join('; '));
       }
     } catch (err: any) {
       setError(err.message);
@@ -102,13 +103,13 @@ export default function FirewallPresetDialog({ node, onClose }: Props) {
           {error && <div style={{ marginBottom: 16 }}><Alert theme="danger" message={error} /></div>}
           {resultMessage && <div style={{ marginBottom: 16 }}><Alert theme="success" message={resultMessage} /></div>}
           <div style={{ marginBottom: 16, padding: 12, borderRadius: 8, background: 'var(--g-color-base-generic)' }}>
-            <div style={{ fontWeight: 600, marginBottom: 6 }}>Рекомендуемый полный preset</div>
+            <div style={{ fontWeight: 600, marginBottom: 6 }}>Быстрый профиль для мобильных клиентов</div>
             <div style={{ color: 'var(--g-color-text-secondary)', marginBottom: 10 }}>
-              Автоматически определит все порты, применит sysctl/BBR, nftables V3,
-              отключит MSS и установит рекомендуемые лимиты и таймауты Telemt.
+              Повторяет ключевые параметры проверенного быстрого сервера: TCP 443, прямой исходящий
+              трафик, BBR/fq, минимальные таймауты Telemt и отсутствие дополнительного SYN limiter.
             </div>
             <Button view="action" onClick={handleApplyAll} loading={saving || loading} width="max">
-              Применить все рекомендации MEKO
+              Оптимизировать мобильное подключение
             </Button>
           </div>
           <Alert

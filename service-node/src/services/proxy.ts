@@ -304,7 +304,9 @@ export async function updateProxy(id: string, req: ProxyUpdateRequest): Promise<
       proxy.containerName,
       proxy.secret,
       updates.domain || proxy.domain,
-      proxy.listenPort || config.nginxPort,
+      updates.listenPort !== undefined
+        ? (updates.listenPort || config.nginxPort)
+        : (proxy.listenPort || config.nginxPort),
       updates.tag !== undefined ? updates.tag : proxy.tag,
       useDirect ? undefined : newSocks5Host,
       updates.maskHost !== undefined ? updates.maskHost : proxy.maskHost,

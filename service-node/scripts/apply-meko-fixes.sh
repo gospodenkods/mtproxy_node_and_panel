@@ -26,15 +26,10 @@ fs.file-max = 2097152
 net.ipv4.tcp_keepalive_time = 45
 net.ipv4.tcp_keepalive_intvl = 15
 net.ipv4.tcp_keepalive_probes = 3
+# Keep kernel defaults for MTU probing, TIME_WAIT, FIN timeout and socket
+# buffers. The known-fast mobile reference uses those defaults; overriding
+# them globally can hurt unrelated services and conceal a path-MTU problem.
 net.ipv4.tcp_window_scaling = 1
-net.core.rmem_max = 16777216
-net.core.wmem_max = 16777216
-net.ipv4.tcp_rmem = 4096 87380 16777216
-net.ipv4.tcp_wmem = 4096 65536 16777216
-net.ipv4.tcp_tw_reuse = 1
-net.ipv4.tcp_fin_timeout = 15
-net.ipv4.tcp_slow_start_after_idle = 0
-net.ipv4.tcp_mtu_probing = 1
 net.ipv4.tcp_syncookies = 1
 EOF
 

@@ -171,6 +171,8 @@ export interface ApplyMekoResult {
   firewall: FirewallStatus;
   ports: number[];
   updatedProxies: number;
+  profile: 'mobile-reference';
+  warnings: string[];
   errors: string[];
 }
 

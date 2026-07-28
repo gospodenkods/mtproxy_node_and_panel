@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { applyFirewallPreset, getFirewallStatus } from '../services/firewall';
 import { applyAllMekoRecommendations } from '../services/meko';
 
-const router = Router();
+const router: Router = Router();
 
 router.get('/', async (_req: Request, res: Response) => {
   try {
